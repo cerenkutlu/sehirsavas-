@@ -1,0 +1,1573 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Şehir Savaşları: Ultimate Edition • Online PvP</title>
+<style>
+:root {
+  --p1-color: #2563eb;
+  --p2-color: #dc2626;
+  --bg-dark: #0f172a;
+  --panel-bg: #1e293b;
+  --card-bg: #334155;
+  --text-main: #f8fafc;
+  --border-color: #475569;
+  --road-color: #1e293b;
+}
+
+* { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+body { margin: 0; background: var(--bg-dark); color: var(--text-main); overflow: hidden; user-select: none; }
+
+button { border: 0; border-radius: 6px; padding: 7px 10px; font-weight: 700; cursor: pointer; transition: all 0.2s; color: white; background: #4f46e5; }
+button:hover { filter: brightness(1.2); transform: translateY(-1px); }
+button:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+#app { height: 100vh; display: grid; grid-template-rows: 65px 1fr; }
+
+header { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #0f172a; border-bottom: 2px solid var(--border-color); }
+.logo { font-size: 18px; font-weight: 900; background: linear-gradient(90deg, #60a5fa, #f87171); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.turn-indicator { padding: 4px 12px; border-radius: 12px; font-weight: 800; font-size: 12px; text-transform: uppercase; color:#fff; }
+.timer-box { font-size: 13px; font-weight: 900; background: #ef4444; padding: 4px 10px; border-radius: 6px; color: #fff; animation: pulse 1s infinite alternate; }
+
+.goal-box { font-size: 11px; background: #1e293b; border: 1px solid #f59e0b; padding: 4px 10px; border-radius: 8px; text-align: center; }
+.goal-progress { width: 120px; height: 6px; background: #0f172a; border-radius: 3px; overflow: hidden; margin-top: 2px; }
+.goal-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #10b981, #f59e0b); transition: width 0.3s; }
+
+@keyframes pulse { from { opacity: 0.8; } to { opacity: 1; transform: scale(1.03); } }
+
+main { display: grid; grid-template-columns: 320px 1fr 340px; min-height: 0; }
+.panel { background: var(--panel-bg); border-right: 1px solid var(--border-color); padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.panel.right { border-right: 0; border-left: 1px solid var(--border-color); }
+
+h3 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; color: #94a3b8; border-bottom: 1px solid var(--border-color); padding-bottom: 3px; letter-spacing: 0.5px; }
+.stat-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; }
+.stat-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; }
+
+/* Harita Tasarımı */
+#city { 
+  position: relative; 
+  background: #14532d; 
+  margin: 10px; 
+  border-radius: 16px; 
+  border: 4px solid #334155; 
+  overflow: hidden; 
+  box-shadow: inset 0 0 100px rgba(0,0,0,0.8), 0 10px 25px rgba(0,0,0,0.5);
+  background-image: 
+    radial-gradient(#166534 20%, transparent 20%),
+    linear-gradient(0deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 20px 20px, 40px 40px, 40px 40px;
+}
+
+.river { position: absolute; top: 0; bottom: 0; left: 48%; width: 35px; background: #0284c7; opacity: 0.7; z-index: 1; border-left: 2px dashed #38bdf8; border-right: 2px dashed #38bdf8; }
+
+.road-h { position: absolute; width: 100%; height: 28px; background: var(--road-color); border-top: 2px dashed #e2e8f0; border-bottom: 2px dashed #e2e8f0; z-index: 2; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+.road-v { position: absolute; height: 100%; width: 28px; background: var(--road-color); border-left: 2px dashed #e2e8f0; border-right: 2px dashed #e2e8f0; z-index: 2; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+
+.district-tag { position: absolute; padding: 4px 10px; border-radius: 8px; background: rgba(15, 23, 42, 0.9); border: 1px solid #64748b; font-size: 11px; font-weight: 800; color: #fbbf24; backdrop-filter: blur(6px); z-index: 3; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+
+#plots { position: absolute; inset: 0; z-index: 4; }
+.plot { 
+  position: absolute; width: 115px; height: 85px; border-radius: 10px; 
+  border: 2px solid #64748b; background: rgba(30, 41, 59, 0.95); 
+  display: flex; flex-direction: column; align-items: center; justify-content: center; 
+  font-size: 10px; cursor: pointer; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 6px 12px rgba(0,0,0,0.4); 
+}
+.plot:hover { transform: translateY(-4px) scale(1.06); border-color: #fff; z-index: 10; box-shadow: 0 12px 20px rgba(0,0,0,0.6); }
+.plot.p1-owner { border: 3px solid var(--p1-color); background: rgba(37, 99, 235, 0.35); }
+.plot.p2-owner { border: 3px solid var(--p2-color); background: rgba(220, 38, 38, 0.35); }
+.plot.bankrupt { border: 3px solid #ef4444 !important; background: rgba(239, 68, 68, 0.5) !important; }
+.plot.mortgaged { border: 3px dashed #f59e0b !important; background: rgba(245, 158, 11, 0.2) !important; }
+.plot.strike { border: 3px dashed #a855f7 !important; background: rgba(168, 85, 247, 0.3) !important; }
+
+.plot .title { font-weight: 800; font-size: 10px; }
+.plot .lvl { font-size: 8px; background: #0f172a; padding: 2px 5px; border-radius: 4px; margin-top: 2px; }
+.shield-icon { position: absolute; top: -6px; right: -6px; background: #0284c7; color: #fff; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: 1px solid #fff; }
+
+#p1{left:4%;top:8%} #p2{left:26%;top:8%} #p3{left:56%;top:8%} #p4{left:78%;top:8%}
+#p5{left:4%;top:38%} #p6{left:26%;top:38%} #p7{left:56%;top:38%} #p8{left:78%;top:38%}
+#p9{left:4%;top:68%} #p10{left:26%;top:68%} #p11{left:56%;top:68%} #p12{left:78%;top:68%}
+
+select, input { width: 100%; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border-color); background: #0f172a; color: white; font-size: 11px; margin-top: 2px; margin-bottom: 4px; }
+.log-box { font-size: 10px; line-height: 1.4; max-height: 100px; overflow-y: auto; background: #0f172a; padding: 6px; border-radius: 6px; border: 1px solid var(--border-color); }
+
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 100; }
+.modal-box { width: min(540px, 92vw); background: #1e293b; border: 2px solid var(--border-color); border-radius: 12px; padding: 16px; }
+
+.quest-item { background: #0f172a; border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 6px; margin-bottom: 4px; font-size: 10px; display: flex; justify-content: space-between; align-items: center; }
+.quest-completed { border-color: #10b981; opacity: 0.5; text-decoration: line-through; }
+.infra-bar-box { background:#0f172a; height:12px; border-radius:6px; overflow:hidden; border:1px solid #475569; margin-top:2px; }
+.infra-bar { height:100%; background:linear-gradient(90deg, #38bdf8, #818cf8); width:0%; transition:width 0.3s; }
+
+/* ONLINE PVP */
+#onlineStatusBar{position:fixed;left:12px;bottom:12px;z-index:300;background:rgba(15,23,42,.94);border:1px solid #475569;border-radius:10px;padding:8px 11px;font-size:11px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+#onlineStatusBar .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:#f59e0b}
+#onlineLobby{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.88);backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center}
+#onlineLobby .online-box{width:min(460px,92vw);background:#1e293b;border:2px solid #475569;border-radius:14px;padding:20px;box-shadow:0 25px 80px rgba(0,0,0,.55)}
+#onlineLobby h2{margin:0 0 6px;font-size:20px;color:#f8fafc}
+#onlineLobby p{font-size:11px;color:#94a3b8;line-height:1.5;margin:0 0 14px}
+#onlineLobby .online-code{font-size:24px;letter-spacing:4px;text-align:center;font-weight:900;color:#fbbf24;background:#0f172a;padding:12px;border-radius:10px;margin:10px 0 12px}
+#onlineLobby .online-row{display:flex;gap:8px}
+#onlineLobby .online-row input{margin:0}
+#onlineLobby .mini-note{margin-top:12px;font-size:10px;color:#64748b}
+body.online-loading{overflow:hidden}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <div class="logo">🏙️ ŞEHİR SAVAŞLARI <span style="font-size:10px; color:#f59e0b;">ULTIMATE EDITION</span></div>
+    <div class="turn-indicator" id="turnIndicator">Sıra: Oyuncu 1</div>
+    <div class="goal-box">
+      🎯 Zafer Hedefi: <b>3.000.000 TL Net Servet</b>
+      <div class="goal-progress"><div class="goal-bar" id="goalBar"></div></div>
+    </div>
+    <div class="timer-box">⏳ Süre: <span id="timer">60</span> sn</div>
+    <div style="font-size:11px;">🗓️ Yıl <span id="year">1</span> / Ay <b id="month">1</b> (Maks: 24)</div>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <h3>👑 Oyuncu Profili</h3>
+      <div class="stat-card">
+        <div class="stat-row"><span id="pName" style="font-weight:800;">-</span><span id="pBadge" style="padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold; color:#fff;">-</span></div>
+        <div class="stat-row"><span>Mevcut Başkan:</span><b id="mayorInfo" style="color:#fbbf24">Seçim Bekleniyor</b></div>
+        <div class="stat-row"><span>Toplam Net Servet:</span><b id="pNetWorth" style="color:#f59e0b">0 TL</b></div>
+        <div class="stat-row"><span>Nakit:</span><b id="pCash" style="color:#10b981">0 TL</b></div>
+        <div class="stat-row"><span>Mevduat (Vadeli):</span><b id="pDeposit" style="color:#38bdf8">0 TL</b></div>
+        <div class="stat-row"><span>Borsa Portföyü:</span><b id="pStock" style="color:#a855f7">0 TL</b></div>
+        <div class="stat-row"><span>Top Brüt Gelir:</span><b id="pGrossRevenue" style="color:#38bdf8">0 TL/ay</b></div>
+        <div class="stat-row"><span>Kredi Taksiti:</span><b id="pMonthlyDebt" style="color:#ef4444">0 TL</b></div>
+        <div class="stat-row"><span>Kalan Borç:</span><b id="pDebt">0 TL</b></div>
+      </div>
+
+      <h3>🏗️ Şehir Altyapı Yatırımları</h3>
+      <div class="stat-card">
+        <div style="font-size:10px; margin-bottom:4px;">
+          ✈️ <b>Havalimanı</b> (Turizm Gelirleri 2 Kat):
+          <div class="infra-bar-box"><div class="infra-bar" id="airportBar"></div></div>
+          <button style="width:100%; font-size:9px; margin-top:3px; background:#0284c7;" onclick="contributeInfra('airport')">100.000 TL Yatırım Yap</button>
+        </div>
+        <div style="font-size:10px; margin-top:6px;">
+          🚇 <b>Metro Hattı</b> (Tüm Gelirler +%35):
+          <div class="infra-bar-box"><div class="infra-bar" id="metroBar"></div></div>
+          <button style="width:100%; font-size:9px; margin-top:3px; background:#6366f1;" onclick="contributeInfra('metro')">100.000 TL Yatırım Yap</button>
+        </div>
+      </div>
+
+      <h3>📈 Banka & Borsa</h3>
+      <div class="stat-card">
+        <input type="number" id="depositAmount" placeholder="Tutar Girin (TL)" step="10000">
+        <div style="display:flex; gap:4px; margin-bottom:4px;">
+          <button style="flex:1; background:#0284c7; font-size:10px;" onclick="depositMoney()">📥 Mevduat Yatır</button>
+          <button style="flex:1; background:#475569; font-size:10px;" onclick="withdrawMoney()">📤 Mevduat Çek</button>
+        </div>
+        <div style="display:flex; gap:4px;">
+          <button style="flex:1; background:#9333ea; font-size:10px;" onclick="buyStock()">📈 Borsa Hissesi Al</button>
+          <button style="flex:1; background:#6b21a8; font-size:10px;" onclick="sellStock()">📉 Hisse Sat</button>
+        </div>
+      </div>
+
+      <h3>🏦 Kredi İle Finansman</h3>
+      <div class="stat-card">
+        <select id="loanType">
+          <option value="esnaf">Esnaf Kredisi: 100.000 TL (Borç: 115.000 TL)</option>
+          <option value="kobi">KOBİ Kredisi: 300.000 TL (Borç: 360.000 TL)</option>
+          <option value="commercial">Ticari Kredi: 600.000 TL (Borç: 750.000 TL)</option>
+          <option value="yatirim">Yatırım Kredisi: 1.000.000 TL (Borç: 1.300.000 TL)</option>
+        </select>
+        <button style="width:100%; background:#d97706; font-size:10px; margin-bottom:4px;" onclick="takeLoan()">💵 Kredi Çek</button>
+        <button id="btnPayFullDebt" style="width:100%; background:#16a34a; font-size:10px;" onclick="payFullDebt()">💰 Borcun Tamamını Öde (Toplu)</button>
+      </div>
+
+      <button style="width:100%; padding:10px; background:#10b981; font-size:13px; margin-top:auto;" onclick="endTurn()">⏱️ TURU TAMAMLA (PAS)</button>
+    </aside>
+
+    <section id="city">
+      <div class="river"></div>
+      <div class="road-h" style="top:27%;"></div>
+      <div class="road-h" style="top:57%;"></div>
+      <div class="road-v" style="left:21%;"></div>
+      <div class="road-v" style="left:73%;"></div>
+
+      <div class="district-tag" style="left:2%; top:2%;">🏘️ Konut Bölgesi</div>
+      <div class="district-tag" style="left:54%; top:2%;">🏢 Finans Merkezi</div>
+      <div class="district-tag" style="left:2%; bottom:2%;">🏭 Sanayi Parkı</div>
+      <div class="district-tag" style="left:54%; bottom:2%;">🏖️ Turizm Sahili</div>
+
+      <div id="plots"></div>
+    </section>
+
+    <aside class="panel right">
+      <h3>🏛️ Kişisel Görevler</h3>
+      <div id="questsBox"></div>
+
+      <h3>🕵️ Kara Borsa & Operasyonlar</h3>
+      <div class="stat-card">
+        <div style="font-size:10px; color:#94a3b8; margin-bottom:4px;">Tur Hakkı: <b id="sabotageRight" style="color:#10b981">1/1</b></div>
+        <button id="btnInspection" style="width:100%; background:#eab308; color:#000; font-size:10px; margin-bottom:4px;" onclick="triggerInspection()">🚨 Zabıta Denetimi (150.000 TL)</button>
+        <button id="btnSabotage" style="width:100%; background:#dc2626; font-size:10px; margin-bottom:4px;" onclick="triggerSabotage()">💣 Dükkanı Sabote Et</button>
+        <button id="btnStrike" style="width:100%; background:#a855f7; font-size:10px;" onclick="triggerStrike()">✊ Sendika Grevi Kışkırt (250.000 TL)</button>
+      </div>
+
+      <h3>🏗️ Arsa & Mülk Yönetimi</h3>
+      <div class="stat-card">
+        <div id="plotDetails" style="font-size:10px; color:#94a3b8; margin-bottom:6px;">Haritadan bir parsel seçin.</div>
+        
+        <div id="buildControls" style="display:none;">
+          <label>Açılacak Tesis</label>
+          <select id="bizType" onchange="checkFeasibilityWarning()">
+            <option value="Market">🛒 Süpermarket (100.000 TL)</option>
+            <option value="Restoran">🍔 Lüks Restoran (200.000 TL)</option>
+            <option value="Kafe">☕ Gece Kafesi (150.000 TL)</option>
+            <option value="Otel">🏨 Sahil Oteli (400.000 TL)</option>
+            <option value="Fabrika">🏭 Ağır Sanayi (500.000 TL)</option>
+          </select>
+          <div id="feasibilityWarn" style="font-size:10px; margin-bottom:4px; font-weight:bold;"></div>
+          <button style="width:100%; background:#10b981; margin-bottom:4px;" onclick="buildBusiness()">🏗️ Tesis İnşa Et</button>
+        </div>
+
+        <button id="btnAuction" style="width:100%; background:#f59e0b; display:none;" onclick="startAuction()">🔨 Açık Artırma Başlat</button>
+        <button id="btnUpgrade" style="width:100%; background:#8b5cf6; display:none; margin-top:4px;" onclick="upgradeBusiness()">⭐ Seviye Yükselt</button>
+        <button id="btnInsure" style="width:100%; background:#0284c7; display:none; margin-top:4px;" onclick="insureBusiness()">🛡️ Dükkanı Sigortala (50.000 TL)</button>
+
+        <button id="btnMortgage" style="width:100%; background:#d97706; display:none; margin-top:4px;" onclick="mortgagePlot()">🏦 Bankaya İpotek Ettir (%50 Nakit Al)</button>
+        <button id="btnRedeemMortgage" style="width:100%; background:#16a34a; display:none; margin-top:4px;" onclick="redeemMortgage()">🔓 İpotek Borcunu Öde & Kurtar</button>
+
+        <button id="btnSell" style="width:100%; background:#ef4444; display:none; margin-top:4px;" onclick="sellPlot()">🏷️ Bankaya Sat (%70 İndirimli)</button>
+        <button id="btnTrade" style="width:100%; background:#0284c7; display:none; margin-top:4px;" onclick="openTradeModal()">🤝 Takas Teklif Et</button>
+      </div>
+
+      <h3>📰 Şehir Haberleri</h3>
+      <div class="log-box" id="logBox"></div>
+    </aside>
+  </main>
+</div>
+
+<!-- BELEDİYE BAŞKANLIĞI SEÇİM MODALI -->
+<div class="modal" id="electionModal">
+  <div class="modal-box" style="text-align:center;">
+    <h3 style="color:#fbbf24; font-size:16px;">🏛️ BELEDİYE BAŞKANLIĞI SEÇİMLERİ</h3>
+    <p style="font-size:11px; color:#94a3b8;">Seçimleri kazanan oyuncu emlak vergisini rakibe yükleyip kendisi vergi muafiyeti kazanır!</p>
+    
+    <div style="display:flex; justify-content:space-around; margin:12px 0;">
+      <div style="background:#0f172a; padding:10px; border-radius:8px; flex:1; margin-right:4px;">
+        <b style="color:var(--p1-color);">Oyuncu 1</b><br>
+        <span style="font-size:10px;">Kampanya Bütçesi:</span>
+        <input type="number" id="p1Bribe" value="50000" step="10000" style="margin-top:4px;">
+      </div>
+      <div style="background:#0f172a; padding:10px; border-radius:8px; flex:1; margin-left:4px;">
+        <b style="color:var(--p2-color);">Oyuncu 2</b><br>
+        <span style="font-size:10px;">Kampanya Bütçesi:</span>
+        <input type="number" id="p2Bribe" value="50000" step="10000" style="margin-top:4px;">
+      </div>
+    </div>
+    <button style="width:100%; background:#10b981; padding:10px;" onclick="runElection()">🗳️ Oyları Say & Seçimi Tamamla</button>
+  </div>
+</div>
+
+<!-- AÇIK ARTIRMA MODALI -->
+<div class="modal" id="auctionModal">
+  <div class="modal-box" style="text-align:center;">
+    <h3 style="color:#f59e0b; font-size:16px;">🔨 CANLI AÇIK ARTIRMA</h3>
+    <p id="auctionPlotName" style="font-size:12px;">Arsa için kapışma başladı!</p>
+    <div style="font-size:24px; font-weight:900; color:#10b981; margin:8px 0;" id="currentBid">0 TL</div>
+    <div style="font-size:11px; margin-bottom:10px;" id="bidLeader">En Yüksek Teklif: Yok</div>
+    
+    <div style="display:flex; gap:8px;">
+      <button style="flex:1; background:#2563eb;" onclick="placeBid(0)">🔵 Oyuncu 1 (+25.000 TL)</button>
+      <button style="flex:1; background:#dc2626;" onclick="placeBid(1)">🔴 Oyuncu 2 (+25.000 TL)</button>
+    </div>
+    <button style="width:100%; background:#475569; margin-top:8px;" onclick="closeAuction()">🛑 İhaleyi Tamamla</button>
+  </div>
+</div>
+
+<!-- GELİŞMİŞ TAKAS MODALI -->
+<div class="modal" id="tradeModal">
+  <div class="modal-box">
+    <h3 style="font-size:14px; margin-top:0; color:#38bdf8;">🤝 GELİŞMİŞ TAKAS PAZARLIĞI</h3>
+    <div style="font-size:11px; margin-bottom:8px;" id="tradeTargetInfo"></div>
+    
+    <div style="background:#0f172a; padding:8px; border-radius:6px; border:1px solid #475569; margin-bottom:8px;">
+      <label style="font-size:11px; font-weight:bold; color:#f59e0b;">1. Verdiğin Varlık (Senin Arsan):</label>
+      <select id="tradeMyPlotSelect" style="margin-top:4px;"></select>
+    </div>
+
+    <div style="background:#0f172a; padding:8px; border-radius:6px; border:1px solid #475569; margin-bottom:8px;">
+      <label style="font-size:11px; font-weight:bold; color:#38bdf8;">2. İstediğin Varlık (Rakibin Arsası):</label>
+      <select id="tradeTargetPlotSelect" style="margin-top:4px;"></select>
+    </div>
+
+    <div style="background:#0f172a; padding:8px; border-radius:6px; border:1px solid #475569; margin-bottom:8px;">
+      <label style="font-size:11px; font-weight:bold;">3. Nakit Transferi Dengelemesi:</label>
+      <input type="number" id="tradeCashDiff" value="0" step="10000" placeholder="Örn: 50000 (Sen ödersin) veya -50000 (Rakip öder)">
+    </div>
+
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button style="flex:1; background:#10b981;" onclick="executeTrade()">✅ Teklifi Gönder & Onayla</button>
+      <button style="flex:1; background:#475569;" onclick="closeTradeModal()">❌ İptal</button>
+    </div>
+  </div>
+</div>
+
+<!-- HACİZLİ MÜLKÜ RAKİBE İNDİRİMLİ TEKLİF ETME MODALI -->
+<div class="modal" id="foreclosureModal">
+  <div class="modal-box" style="text-align:center; border-color:#ef4444;">
+    <h3 style="color:#ef4444; font-size:16px;">🏛️ BANKA HACİZ İHALESİ</h3>
+    <p id="foreclosureText" style="font-size:12px; margin-bottom:12px;"></p>
+    <div style="font-size:20px; font-weight:900; color:#10b981; margin:8px 0;" id="foreclosurePrice">0 TL</div>
+    <div style="display:flex; gap:8px; margin-top:12px;">
+      <button style="flex:1; background:#10b981;" onclick="buyForeclosedPlot()">💰 Satın Al</button>
+      <button style="flex:1; background:#475569;" onclick="rejectForeclosedPlot()">❌ Pas Geç (Boşa Çıkar)</button>
+    </div>
+  </div>
+</div>
+
+<!-- AY SONU RAPORU -->
+<div class="modal" id="reportModal">
+  <div class="modal-box">
+    <h3 style="font-size:14px; margin-top:0;">📊 Ay Sonu Finansal Bilanço</h3>
+    <div id="reportContent"></div>
+    <button style="width:100%; margin-top:12px; background:#10b981; padding:10px;" onclick="closeReport()">Sonraki Aya Geç ➔</button>
+  </div>
+</div>
+
+<!-- OYUN SONU -->
+<div class="modal" id="gameOverModal">
+  <div class="modal-box" style="text-align:center; border-color:#f59e0b;">
+    <h2 id="winnerTitle" style="color:#f59e0b; margin-top:0;">🏆 OYUN BİTTİ!</h2>
+    <div id="winnerDetails" style="font-size:13px; margin:12px 0; line-height:1.5;"></div>
+    <button style="width:100%; background:#2563eb; padding:10px;" onclick="location.reload()">🔄 Yeniden Oyna</button>
+  </div>
+</div>
+
+<script>
+const WINNING_NET_WORTH = 3000000;
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(type) {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  let now = audioCtx.currentTime;
+
+  if (type === 'money') {
+    osc.frequency.setValueAtTime(523, now); osc.frequency.setValueAtTime(659, now + 0.08);
+    gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+    osc.start(now); osc.stop(now + 0.2);
+  } else if (type === 'build') {
+    osc.type = 'square'; osc.frequency.setValueAtTime(140, now); osc.frequency.setValueAtTime(280, now + 0.1);
+    gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+    osc.start(now); osc.stop(now + 0.18);
+  } else if (type === 'sabotage') {
+    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now); osc.frequency.linearRampToValueAtTime(40, now + 0.35);
+    gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+    osc.start(now); osc.stop(now + 0.35);
+  }
+}
+
+const bizCatalog = {
+  Market: { cost: 100000, baseIncome: 65000, upkeep: 10000, icon: '🛒' },
+  Restoran: { cost: 200000, baseIncome: 120000, upkeep: 20000, icon: '🍔' },
+  Kafe: { cost: 150000, baseIncome: 90000, upkeep: 15000, icon: '☕' },
+  Otel: { cost: 400000, baseIncome: 240000, upkeep: 40000, icon: '🏨' },
+  Fabrika: { cost: 500000, baseIncome: 320000, upkeep: 50000, icon: '🏭' }
+};
+
+const loanCatalog = {
+  esnaf: { name: 'Esnaf Kredisi', amount: 100000, debt: 115000, monthly: 23000, months: 5 },
+  kobi: { name: 'KOBİ Kredisi', amount: 300000, debt: 360000, monthly: 45000, months: 8 },
+  commercial: { name: 'Ticari Kredi', amount: 600000, debt: 750000, monthly: 75000, months: 10 },
+  yatirim: { name: 'Yatırım Kredisi', amount: 1000000, debt: 1300000, monthly: 108333, months: 12 }
+};
+
+const ecoEvents = [
+  { name: "🏖️ Turizm Patlaması!", text: "Turizm bölgesindeki oteller bu ay %50 ekstra kâr elde ediyor!", apply: p => p.district === 'Turizm' ? 1.5 : 1.0 },
+  { name: "🏭 Sanayi Teşviki!", text: "Sanayi tesislerinin gelirleri %40 arttı!", apply: p => p.district === 'Sanayi' ? 1.4 : 1.0 },
+  { name: "🌋 Şehirde Şiddetli Deprem!", text: "Sigortasız dükkanlar ağır hasar aldı ve bu ay gelir getiremiyor!", isDisaster: true, apply: p => 1.0 },
+  { name: "📉 Global Ekonomik Kriz!", text: "Piyasalar çöktü, tüm işletmelerin gelirleri %30 düştü.", apply: p => 0.7 },
+  { name: "📊 Normal Ekonomik Seyir", text: "Piyasalar stabil ve sakin bir seyir izliyor.", apply: p => 1.0 }
+];
+
+let plots = [
+  { id: 'p1', name: 'Parsel A-1', district: 'Konut', basePrice: 150000, owner: null, biz: null, mortgage: null },
+  { id: 'p2', name: 'Parsel A-2', district: 'Konut', basePrice: 180000, owner: null, biz: null, mortgage: null },
+  { id: 'p3', name: 'Parsel B-1', district: 'Finans', basePrice: 250000, owner: null, biz: null, mortgage: null },
+  { id: 'p4', name: 'Parsel B-2', district: 'Finans', basePrice: 280000, owner: null, biz: null, mortgage: null },
+  { id: 'p5', name: 'Parsel C-1', district: 'Sanayi', basePrice: 160000, owner: null, biz: null, mortgage: null },
+  { id: 'p6', name: 'Parsel B-3', district: 'Finans', basePrice: 300000, owner: null, biz: null, mortgage: null },
+  { id: 'p7', name: 'Parsel D-1', district: 'Turizm', basePrice: 240000, owner: null, biz: null, mortgage: null },
+  { id: 'p8', name: 'Parsel D-2', district: 'Turizm', basePrice: 220000, owner: null, biz: null, mortgage: null },
+  { id: 'p9', name: 'Parsel E-1', district: 'Sanayi', basePrice: 150000, owner: null, biz: null, mortgage: null },
+  { id: 'p10', name: 'Parsel F-1', district: 'Turizm', basePrice: 350000, owner: null, biz: null, mortgage: null },
+  { id: 'p11', name: 'Parsel F-2', district: 'Turizm', basePrice: 380000, owner: null, biz: null, mortgage: null },
+  { id: 'p12', name: 'Parsel E-2', district: 'Sanayi', basePrice: 170000, owner: null, biz: null, mortgage: null }
+];
+
+let timerInterval = null;
+let timeLeft = 60;
+let pendingForeclosurePlot = null;
+
+let state = {
+  year: 1, month: 1, turn: 0, mayor: null,
+  selectedPlotId: null,
+  currentEvent: ecoEvents[4],
+  infra: { airportProgress: 0, airportDone: false, metroProgress: 0, metroDone: false },
+  auction: { active: false, plotId: null, bid: 0, leader: null },
+  log: [],
+  players: [
+    { id: 0, name: 'Oyuncu 1', color: '🔵', cash: 400000, deposit: 0, stock: 0, debt: 0, monthlyDebt: 0, debtMonthsLeft: 0, done: false, sabotagesLeft: 1, boughtLandThisTurn: false, lastProfit: 0, quests: [] },
+    { id: 1, name: 'Oyuncu 2', color: '🔴', cash: 400000, deposit: 0, stock: 0, debt: 0, monthlyDebt: 0, debtMonthsLeft: 0, done: false, sabotagesLeft: 1, boughtLandThisTurn: false, lastProfit: 0, quests: [] }
+  ]
+};
+
+function generatePlayerQuests() {
+  return [
+    { id: 1, title: "🏨 Otel Hamlesi", desc: "1 adet Otel inşa et.", reward: 150000, completed: false },
+    { id: 2, title: "🏭 Sanayi Yatırımı", desc: "1 adet Fabrika kur.", reward: 200000, completed: false },
+    { id: 3, title: "🏙️ Bölge Hakimiyeti", desc: "En az 3 arsa kapat.", reward: 120000, completed: false }
+  ];
+}
+
+state.players[0].quests = generatePlayerQuests();
+state.players[1].quests = generatePlayerQuests();
+
+const $ = id => document.getElementById(id);
+const fmt = n => Math.round(n).toLocaleString('tr-TR') + ' TL';
+const activeP = () => state.players[state.turn];
+
+function calculateNetWorth(player) {
+  let landVal = plots.filter(x => x.owner === player.id).reduce((sum, p) => {
+    let val = p.basePrice;
+    if (p.biz) val += bizCatalog[p.biz.type].cost * p.biz.lvl;
+    if (p.mortgage) val -= p.mortgage.debt;
+    return sum + val;
+  }, 0);
+  return player.cash + player.deposit + player.stock + landVal - player.debt;
+}
+
+function checkGoalVictory() {
+  for (let p of state.players) {
+    let net = calculateNetWorth(p);
+    if (net >= WINNING_NET_WORTH) {
+      clearInterval(timerInterval);
+      $('winnerTitle').textContent = '🏆 ZAFER HEDEFİNE ULAŞILDI!';
+      $('winnerDetails').innerHTML = `
+        🎉 <b style="color:#10b981;">${p.name}</b>, Toplam Servetini <b style="color:#f59e0b;">${fmt(net)}</b> seviyesine çıkararak oyunu KAZANDI!
+      `;
+      $('gameOverModal').style.display = 'flex';
+      return true;
+    }
+  }
+  return false;
+}
+
+function init() {
+  renderMap();
+  startTimer();
+  updateUI();
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timeLeft = 60;
+  $('timer').textContent = timeLeft;
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    $('timer').textContent = timeLeft;
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      let timedOutPlayer = activeP().name;
+      addLog(`⏰ SÜRE DOLDU: ${timedOutPlayer} hamle yapamadı!`);
+      endTurn();
+    }
+  }, 1000);
+}
+
+// TESİS KOMBİNASYONU / SİNERJİ KONTROLÜ
+function getSynergyMultiplier(plot) {
+  if (!plot.biz || plot.owner === null) return 1.0;
+  
+  let districtPlots = plots.filter(x => x.district === plot.district && x.owner === plot.owner && x.biz);
+  let types = districtPlots.map(x => x.biz.type);
+
+  if (types.includes('Otel') && types.includes('Restoran')) return 1.30; // %30 ekstra kâr
+  if (types.includes('Fabrika') && types.includes('Market')) return 1.25; // %25 ekstra kâr
+  if (districtPlots.length >= 3) return 1.40; // Bölge Tekeli: %40 ekstra kâr
+
+  return 1.0;
+}
+
+function calculateGrossRevenue(playerIdx) {
+  let total = 0;
+  plots.filter(x => x.owner === playerIdx && x.biz && !x.biz.isBankrupt && !x.biz.inspected && !x.biz.strikeMonths && !x.mortgage).forEach(pt => {
+    let spec = bizCatalog[pt.biz.type];
+    let feas = getFeasibility(pt.district, pt.biz.type);
+    let syn = getSynergyMultiplier(pt);
+    let infraMult = (pt.district === 'Turizm' && state.infra.airportDone) ? 2.0 : 1.0;
+    if (state.infra.metroDone) infraMult += 0.35;
+
+    total += spec.baseIncome * feas.mult * syn * infraMult * (1 + (pt.biz.lvl - 1) * 0.4);
+  });
+  return total;
+}
+
+function getFeasibility(district, bizType) {
+  if (district === 'Sanayi') {
+    if (bizType === 'Fabrika') return { mult: 1.2, status: 'UYGUN (+%20 Kâr)' };
+    if (bizType === 'Otel' || bizType === 'Restoran') return { mult: 0.7, status: 'KÖTÜ (-%30 Düşük Kâr)' };
+  }
+  if (district === 'Turizm') {
+    if (bizType === 'Otel' || bizType === 'Kafe') return { mult: 1.3, status: 'MÜKEMMEL (+%30 Kâr)' };
+    if (bizType === 'Fabrika') return { mult: 0.5, status: 'YASAK BÖLGE (%50 Cezalı Kâr!)' };
+  }
+  if (district === 'Finans') {
+    if (bizType === 'Restoran' || bizType === 'Market') return { mult: 1.15, status: 'İYİ (+%15 Kâr)' };
+  }
+  return { mult: 1.0, status: 'STANDART (%100 Kâr)' };
+}
+
+function checkFeasibilityWarning() {
+  let p = plots.find(x => x.id === state.selectedPlotId);
+  let bType = $('bizType').value;
+  let feas = getFeasibility(p.district, bType);
+  let el = $('feasibilityWarn');
+  el.textContent = `Bölge Uyuşumu: ${feas.status}`;
+  el.style.color = feas.mult < 1 ? '#ef4444' : '#10b981';
+}
+
+function renderMap() {
+  const box = $('plots');
+  box.innerHTML = '';
+  plots.forEach(p => {
+    let el = document.createElement('div');
+    el.id = p.id;
+    el.className = `plot ${p.owner === 0 ? 'p1-owner' : p.owner === 1 ? 'p2-owner' : ''}`;
+    if (p.biz && p.biz.isBankrupt) el.classList.add('bankrupt');
+    if (p.mortgage) el.classList.add('mortgaged');
+    if (p.biz && p.biz.strikeMonths > 0) el.classList.add('strike');
+
+    el.onclick = () => selectPlot(p.id);
+
+    let content = `<div class="title">${p.name}</div><div style="font-size:8px; color:#fbbf24;">${p.district}</div>`;
+    
+    if (p.biz && p.biz.insured) {
+      content += `<div class="shield-icon" title="Sigortalı Mülk">🛡️</div>`;
+    }
+
+    if (p.mortgage) {
+      content += `<div style="color:#f59e0b; font-weight:900;">🏛️ İPOTEKLİ</div>`;
+    } else if (p.biz && p.biz.strikeMonths > 0) {
+      content += `<div style="color:#a855f7; font-weight:900;">✊ GREVDE (${p.biz.strikeMonths}Ay)</div>`;
+    } else if (p.owner === null) {
+      content += `<div style="color:#10b981; font-weight:700; margin-top:2px;">${fmt(p.basePrice)}</div>`;
+    } else if (p.biz) {
+      if (p.biz.isBankrupt) {
+        content += `<div style="color:#ef4444; font-weight:900;">💥 BATTI!</div>`;
+      } else if (p.biz.inspected) {
+        content += `<div style="color:#eab308; font-weight:900;">🚨 MÜHÜRLÜ</div>`;
+      } else {
+        let icon = bizCatalog[p.biz.type]?.icon || '🏢';
+        content += `<div style="font-weight:800; color:#fff; font-size:11px;">${icon} ${p.biz.type}</div><div class="lvl">Lvl ${p.biz.lvl}</div>`;
+      }
+    } else {
+      content += `<div style="color:#94a3b8;">Boş Arsa</div>`;
+    }
+    el.innerHTML = content;
+    box.appendChild(el);
+  });
+}
+
+function updateUI() {
+  let p = activeP();
+  $('turnIndicator').textContent = `${p.color} ${p.name} SIRASI`;
+  $('turnIndicator').style.background = state.turn === 0 ? 'var(--p1-color)' : 'var(--p2-color)';
+  
+  let netWorth = calculateNetWorth(p);
+  $('pName').textContent = p.name;
+  $('pBadge').textContent = p.id === 0 ? 'Mavi Takım' : 'Kırmızı Takım';
+  $('pBadge').style.background = p.id === 0 ? 'var(--p1-color)' : 'var(--p2-color)';$('mayorInfo').textContent = state.mayor !== null ? state.players[state.mayor].name : 'Henüz Seçilmedi';
+  
+  $('pNetWorth').textContent = fmt(netWorth);
+  $('pCash').textContent = fmt(p.cash);$('pDeposit').textContent = fmt(p.deposit);
+  $('pStock').textContent = fmt(p.stock);$('pGrossRevenue').textContent = `${fmt(calculateGrossRevenue(p.id))}/ay`;
+  $('pDebt').textContent = fmt(p.debt);$('pMonthlyDebt').textContent = `${fmt(p.monthlyDebt)} (${p.debtMonthsLeft} Ay)`;
+
+  $('airportBar').style.width = (state.infra.airportProgress / 500000 * 100) + '\%';$('metroBar').style.width = (state.infra.metroProgress / 600000 * 100) + '%';
+
+  let progressPct = Math.min(100, Math.max(0, (netWorth / WINNING_NET_WORTH) * 100));
+  $('goalBar').style.width = progressPct + '%';
+
+  $('sabotageRight').textContent = `${p.sabotagesLeft}/1`;
+  $('sabotageRight').style.color = p.sabotagesLeft > 0 ? '#10b981' : '#ef4444';
+  
+  $('year').textContent = state.year;
+  $('month').textContent = state.month;
+
+  $('btnPayFullDebt').style.display = p.debt > 0 ? 'block' : 'none';
+
+  let qHtml = '';
+  p.quests.forEach(q => {
+    qHtml += `<div class="quest-item ${q.completed ? 'quest-completed' : ''}">
+      <div><b>${q.title}</b><br><span style="color:#94a3b8;">${q.desc}</span></div>
+      <div style="color:#f59e0b; font-weight:700;">${fmt(q.reward)}</div>
+    </div>`;
+  });
+  $('questsBox').innerHTML = qHtml;
+
+  $('logBox').innerHTML = state.log.slice(-8).reverse().map(x => '• ' + x).join('<br>');
+  renderMap();
+  
+  checkGoalVictory();
+}
+
+function selectPlot(id) {
+  state.selectedPlotId = id;
+  let p = plots.find(x => x.id === id);
+  let details = `<b>${p.name} (${p.district} Bölgesi)</b><br>`;
+
+  $('buildControls').style.display = 'none';$('btnAuction').style.display = 'none';
+  $('btnUpgrade').style.display = 'none';$('btnInsure').style.display = 'none';
+  $('btnSell').style.display = 'none';$('btnTrade').style.display = 'none';
+  $('btnMortgage').style.display = 'none';$('btnRedeemMortgage').style.display = 'none';
+
+  if (p.mortgage) {
+    details += `Durum: <b style="color:#f59e0b;">İpotekli</b><br>İpotek Borcu: <b>${fmt(p.mortgage.debt)}</b><br>`;
+    if (p.owner === state.turn) {
+      $('btnRedeemMortgage').textContent = `🔓 İpotekten Kurtar (${fmt(p.mortgage.debt)})`;
+      $('btnRedeemMortgage').style.display = 'block';
+    }
+  } else if (p.owner === null) {
+    details += `Arsa Değeri: <b>${fmt(p.basePrice)}</b><br>Durum: Sahipsiz`;
+    $('btnAuction').style.display = 'block';
+  } else {
+    let ownerP = state.players[p.owner];
+    details += `Sahibi: <b>${ownerP.name}</b><br>`;
+    if (p.biz) {
+      let syn = getSynergyMultiplier(p);
+      details += `İşletme: <b>${p.biz.type} (Seviye ${p.biz.lvl})</b> ${p.biz.insured ? '🛡️ [Sigortalı]' : ''}<br>`;
+      if (syn > 1.0) details += `<b style="color:#10b981;">🔥 Sinerji Bonusu: +%${Math.round((syn-1)*100)} Gelir!</b><br>`;
+      
+      if (p.owner === state.turn && !p.biz.isBankrupt) {
+        if (p.biz.lvl < 3) {
+          let upgradeCost = bizCatalog[p.biz.type].cost * 0.7;
+          $('btnUpgrade').textContent = `⭐ Seviye Yükselt (${fmt(upgradeCost)})`;
+          $('btnUpgrade').style.display = 'block';
+        }
+        if (!p.biz.insured) {
+          $('btnInsure').style.display = 'block';
+        }
+      }
+    } else {
+      details += `Durum: Boş Arsa`;
+      if (p.owner === state.turn) {
+        $('buildControls').style.display = 'block';
+        checkFeasibilityWarning();
+      }
+    }
+
+    if (p.owner === state.turn) {
+      let totalVal = p.basePrice + (p.biz ? bizCatalog[p.biz.type].cost * p.biz.lvl : 0);
+      $('btnMortgage').textContent = `🏦 İpotek Ettir (+${fmt(totalVal * 0.5)})`;
+      $('btnMortgage').style.display = 'block';$('btnSell').textContent = `🏷️ Bankaya Sat (${fmt(totalVal * 0.7)})`;
+      $('btnSell').style.display = 'block';
+    } else {
+      $('btnTrade').style.display = 'block';
+    }
+  }
+  $('plotDetails').innerHTML = details;
+}
+
+// ALTYAPI YATIRIMI
+function contributeInfra(type) {
+  let me = activeP();
+  if (me.cash < 100000) return alert('Yatırım için 100.000 TL nakit gerekiyor!');
+
+  me.cash -= 100000;
+  playSound('money');
+
+  if (type === 'airport') {
+    state.infra.airportProgress += 100000;
+    addLog(`✈️ HAVALİMANI: ${me.name} projeye 100.000 TL aktardı.`);
+    if (state.infra.airportProgress >= 500000 && !state.infra.airportDone) {
+      state.infra.airportDone = true;
+      alert('🎉 HAVALİMANI TAMAMLANDI! Artık tüm Turizm Sahili tesisleri 2 KAT KÂR elde edecek!');
+      addLog(`🎉 BÜYÜK AÇILIŞ: Havalimanı tamamlandı! Turizm gelirleri 2 katına çıktı!`);
+    }
+  } else if (type === 'metro') {
+    state.infra.metroProgress += 100000;
+    addLog(`🚇 METRO: ${me.name} projeye 100.000 TL aktardı.`);
+    if (state.infra.metroProgress >= 600000 && !state.infra.metroDone) {
+      state.infra.metroDone = true;
+      alert('🎉 METRO HATTI AÇILDI! Şehirdeki tüm dükkanların kira geliri %35 arttı!');
+      addLog(`🎉 BÜYÜK AÇILIŞ: Metro hattı açıldı! Tüm gelirler +%35 arttı!`);
+    }
+  }
+  updateUI();
+}
+
+// SENDİKA GREVİ KIŞKIRTMA
+function triggerStrike() {
+  let me = activeP();
+  if (me.cash < 250000) return alert('Sendika grevi kışkırtmak için 250.000 TL gerekir!');
+
+  let p = plots.find(x => x.id === state.selectedPlotId);
+  if (!p || p.owner === null || p.owner === me.id || !p.biz) return alert('Lütfen RAKİBİN BİR İŞLETMESİNİ seçin!');
+
+  if (p.biz.insured) return alert('🛡️ ENGELENDİ: Rakip işletme sigortalı olduğu için grev engellendi!');
+
+  me.cash -= 250000;
+  p.biz.strikeMonths = 2;
+  playSound('sabotage');
+  addLog(`✊ GREV KİŞKIRTILDI: ${me.name}, rakip ${p.biz.type} tesisinde 2 aylık grev başlattı!`);
+  selectPlot(p.id);
+  updateUI();
+}
+
+// BELEDİYE SEÇİMLERİ
+function runElection() {
+  let b1 = parseInt($('p1Bribe').value) || 0;
+  let b2 = parseInt($('p2Bribe').value) || 0;
+
+  if (state.players[0].cash < b1) return alert('Oyuncu 1 bu kadar kampanya bütçesi ayıramaz!');
+  if (state.players[1].cash < b2) return alert('Oyuncu 2 bu kadar kampanya bütçesi ayıramaz!');
+
+  state.players[0].cash -= b1;
+  state.players[1].cash -= b2;
+
+  let score1 = b1 + (plots.filter(x => x.owner === 0).length * 40000);
+  let score2 = b2 + (plots.filter(x => x.owner === 1).length * 40000);
+
+  if (score1 >= score2) {
+    state.mayor = 0;
+    alert(`🎉 SEÇİM SONUCU: Oyuncu 1 SEÇİMİ KAZANDI!\n\nEmlak vergisinden muaf tutuldu, Oyuncu 2'ye vergi zammı uygulandı!`);
+    addLog(`🗳️ SEÇİM: Oyuncu 1 Belediye Başkanı seçildi!`);
+  } else {
+    state.mayor = 1;
+    alert(`🎉 SEÇİM SONUCU: Oyuncu 2 SEÇİMİ KAZANDI!\n\nEmlak vergisinden muaf tutuldu, Oyuncu 1'e vergi zammı uygulandı!`);
+    addLog(`🗳️ SEÇİM: Oyuncu 2 Belediye Başkanı seçildi!`);
+  }
+
+  $('electionModal').style.display = 'none';
+  updateUI();
+}
+
+function processMonth() {
+  clearInterval(timerInterval);
+  let marketFactor = (Math.floor(Math.random() * 41) + 85) / 100;
+  let stockChange = (Math.random() * 0.4) - 0.15;
+
+  let foreclosedPlots = [];
+
+  plots.forEach(p => {
+    if (p.mortgage) {
+      p.mortgage.monthsLeft--;
+      if (p.mortgage.monthsLeft <= 0) foreclosedPlots.push(p);
+    }
+    if (p.biz && p.biz.strikeMonths > 0) {
+      p.biz.strikeMonths--;
+    }
+  });
+
+  state.players.forEach(p => {
+    p.sabotagesLeft = 1;
+    p.boughtLandThisTurn = false;
+
+    if (p.stock > 0) p.stock = Math.round(p.stock * (1 + stockChange));
+    if (p.deposit > 0) p.deposit += p.deposit * 0.03;
+
+    if (p.debtMonthsLeft > 0) {
+      p.cash -= p.monthlyDebt;
+      p.debt -= p.monthlyDebt;
+      p.debtMonthsLeft--;
+      if (p.debtMonthsLeft === 0) p.debt = 0;
+    }
+
+    // YIL SONU EMLAK VERGİSİ (BAŞKANLIK SİSTEMLİ)
+    if (state.month === 12) {
+      let myPlotCount = plots.filter(x => x.owner === p.id).length;
+      let tax = myPlotCount * 25000;
+
+      if (state.mayor === p.id) {
+        tax = 0; // Başkan sıfır vergi öder
+        addLog(`🏛️ BAŞKANLIK MUAFİYETİ: ${p.name} emlak vergisi ödemedi!`);
+      } else if (state.mayor !== null) {
+        tax *= 1.5; // Rakip %50 zamlı vergi öder
+        addLog(`🏛️ ZAMLI VERGİ: ${p.name}, muhalefette olduğu için ${fmt(tax)} vergi ödedi.`);
+      }
+      p.cash -= tax;
+    }
+
+    if (p.cash < -200000) {
+      triggerBankruptcy(p);
+      return;
+    }
+
+    let totalNetProfit = 0;
+    let myPlots = plots.filter(x => x.owner === p.id && x.biz && !x.mortgage);
+
+    myPlots.forEach(pt => {
+      let b = pt.biz;
+      if (b.isBankrupt || b.inspected || b.sabotaged || b.strikeMonths > 0) return;
+
+      // DOĞAL AFET (DEPREM) KONTROLÜ
+      if (state.currentEvent.isDisaster && !b.insured) {
+        addLog(`🌋 HASAR: ${pt.name} sigortasız olduğu için afette hasar gördü, gelir getirmedi!`);
+        return;
+      }
+
+      let spec = bizCatalog[b.type];
+      let feas = getFeasibility(pt.district, b.type);
+      let syn = getSynergyMultiplier(pt);
+      let eventMult = state.currentEvent.apply(pt);
+
+      let infraMult = (pt.district === 'Turizm' && state.infra.airportDone) ? 2.0 : 1.0;
+      if (state.infra.metroDone) infraMult += 0.35;
+
+      let monthlyRevenue = spec.baseIncome * feas.mult * syn * infraMult * marketFactor * eventMult * (1 + (b.lvl - 1) * 0.4);
+      let netProfit = monthlyRevenue - spec.upkeep;
+
+      totalNetProfit += netProfit;
+    });
+
+    p.cash += totalNetProfit;
+    p.lastProfit = totalNetProfit;
+    p.done = false;
+  });
+
+  if (foreclosedPlots.length > 0) {
+    handleForeclosures(foreclosedPlots, marketFactor, stockChange);
+  } else {
+    finishMonthProcess(marketFactor, stockChange);
+  }
+}
+
+function finishMonthProcess(marketFactor, stockChange) {
+  if (state.players.some(p => p.cash < -200000)) return;
+
+  if (!checkGoalVictory()) {
+    showReportModal(marketFactor, stockChange);
+    state.turn = 0;
+  }
+}
+
+function showReportModal(marketFactor, stockChange) {
+  let p1 = state.players[0];
+  let p2 = state.players[1];
+
+  $('reportContent').innerHTML = `
+    <div style="font-size:11px; color:#fbbf24; margin-bottom:4px;">📈 Piyasa Endeksi: %${Math.round(marketFactor*100)} | Borsa Değişimi: %${Math.round(stockChange*100)}</div>
+    <div style="font-size:10px; color:#38bdf8; margin-bottom:8px;">📰 <b>${state.currentEvent.name}</b>: ${state.currentEvent.text}</div>
+    <div style="display:flex; justify-content:space-between;">
+      <div style="flex:1; background:#0f172a; padding:8px; border-radius:6px; margin-right:4px;">
+        <b style="color:var(--p1-color);">${p1.name}</b><br>
+        Aylık Net Gelir: <b style="color:${p1.lastProfit>=0?'#10b981':'#ef4444'};">${fmt(p1.lastProfit)}</b><br>
+        Kalan Nakit: <b>${fmt(p1.cash)}</b>
+      </div>
+      <div style="flex:1; background:#0f172a; padding:8px; border-radius:6px; margin-left:4px;">
+        <b style="color:var(--p2-color);">${p2.name}</b><br>
+        Aylık Net Gelir: <b style="color:${p2.lastProfit>=0?'#10b981':'#ef4444'};">${fmt(p2.lastProfit)}</b><br>
+        Kalan Nakit: <b>${fmt(p2.cash)}</b>
+      </div>
+    </div>
+  `;
+  $('reportModal').style.display = 'flex';
+}
+
+function closeReport() {
+  $('reportModal').style.display = 'none';
+  state.month++;
+
+  // HER 6 AYDA BİR BELEDİYE SEÇİMİ
+  if (state.month % 6 === 0) {
+    $('electionModal').style.display = 'flex';
+  }
+
+  if (state.month > 12) { 
+    state.month = 1; 
+    state.year++; 
+    state.currentEvent = ecoEvents[Math.floor(Math.random() * ecoEvents.length)];
+    addLog(`📰 OLAĞANÜSTÜ OLAY: ${state.currentEvent.name}`);
+  }
+
+  if (state.year > 2) finishGame();
+  else {
+    startTimer();
+    updateUI();
+  }
+}
+
+// YARDIMCI VE MEVCUT FONKSİYONLAR
+function mortgagePlot(remote = false) {
+  let p = plots.find(x => x.id === state.selectedPlotId);
+  let me = activeP();
+  if (p.owner !== me.id) return;
+  let totalVal = p.basePrice + (p.biz ? bizCatalog[p.biz.type].cost * p.biz.lvl : 0);
+  let cashGiven = totalVal * 0.5;
+  let debtToPay = cashGiven * 1.2;
+  if (remote || confirm(`${p.name} mülkünü ipotek ettirip ${fmt(cashGiven)} nakit almak istiyor musunuz?`)) {
+    me.cash += cashGiven;
+    p.mortgage = { cashGiven, debt: debtToPay, monthsLeft: 3 };
+    playSound('money');
+    addLog(`🏛️ İPOTEK: ${me.name}, ${p.name} için ${fmt(cashGiven)} aldı.`);
+    selectPlot(p.id); updateUI();
+  }
+}
+
+function redeemMortgage() {
+  let p = plots.find(x => x.id === state.selectedPlotId);
+  let me = activeP();
+  if (!p.mortgage || me.cash < p.mortgage.debt) return alert('Yetersiz bakiye!');
+  me.cash -= p.mortgage.debt;
+  p.mortgage = null;
+  playSound('money');
+  addLog(`🔓 İPOTEK KALKTI: ${me.name}, ${p.name} mülkünü kurtardı.`);
+  selectPlot(p.id); updateUI();
+}
+
+function openTradeModal() {
+  let me = activeP(), opponent = state.players[state.turn === 0 ? 1 : 0];
+  let myPlots = plots.filter(x => x.owner === me.id && !x.mortgage);
+  let oppPlots = plots.filter(x => x.owner === opponent.id && !x.mortgage);
+  if (!myPlots.length || !oppPlots.length) return alert('Takas için her iki tarafta da ipoteksiz mülk olmalı!');
+  $('tradeTargetInfo').innerHTML = `🤝 <b>${me.name}</b> & <b>${opponent.name}</b> Takas Pazarlığı`;
+  let mySel = $('tradeMyPlotSelect'); mySel.innerHTML = '';
+  myPlots.forEach(m => mySel.innerHTML += `<option value="${m.id}">${m.name} (${m.biz ? m.biz.type : 'Boş'})</option>`);
+  let oppSel = $('tradeTargetPlotSelect'); oppSel.innerHTML = '';
+  oppPlots.forEach(o => oppSel.innerHTML += `<option value="${o.id}">${o.name} (${o.biz ? o.biz.type : 'Boş'})</option>`);
+  $('tradeModal').style.display = 'flex';
+}
+function closeTradeModal() { $('tradeModal').style.display = 'none'; }
+
+function executeTrade() {
+  let myP = plots.find(x => x.id === $('tradeMyPlotSelect').value);
+  let targetP = plots.find(x => x.id === $('tradeTargetPlotSelect').value);
+  let cashDiff = parseInt($('tradeCashDiff').value) || 0;
+  let me = activeP(), opponent = state.players[state.turn === 0 ? 1 : 0];
+  if (confirm(`${opponent.name}, bu takas teklifini onaylıyor musun?`)) {
+    me.cash -= cashDiff; opponent.cash += cashDiff;
+    myP.owner = opponent.id; targetP.owner = me.id;
+    playSound('money');
+    addLog(`🤝 TAKAS: ${me.name} ve ${opponent.name} mülk takası yaptı!`);
+    closeTradeModal(); selectPlot(targetP.id); updateUI();
+  }
+}
+
+function payFullDebt() {
+  let me = activeP();
+  if (me.cash < me.debt) return alert('Kredi borcunu ödeyecek kadar nakdiniz yok!');
+  me.cash -= me.debt; me.debt = 0; me.monthlyDebt = 0; me.debtMonthsLeft = 0;
+  playSound('money'); addLog(`💰 BORÇ KAPANDI: ${me.name} banka borcunu sıfırladı.`); updateUI();
+}
+
+function insureBusiness() {
+  let p = plots.find(x => x.id === state.selectedPlotId);
+  let me = activeP();
+  if (me.cash < 50000) return alert('Yetersiz bakiye!');
+  me.cash -= 50000; p.biz.insured = true; playSound('money');
+  addLog(`🛡️ SİGORTA: ${p.name} sigortalandı.`); selectPlot(p.id); updateUI();
+}
+
+function buyStock() {
+  let me = activeP(), amt = parseInt($('depositAmount').value) || 0;
+  if (amt <= 0 || me.cash < amt) return alert('Yetersiz bakiye!');
+  me.cash -= amt; me.stock += amt; playSound('money'); updateUI();
+}
+function sellStock() {
+  let me = activeP(), amt = parseInt($('depositAmount').value) || 0;
+  if (amt <= 0 || me.stock < amt) return alert('Yetersiz hisse!');
+  me.stock -= amt; me.cash += amt; playSound('money'); updateUI();
+}
+function depositMoney() {
+  let me = activeP(), amt = parseInt($('depositAmount').value) || 0;
+  if (amt <= 0 || me.cash < amt) return alert('Yetersiz bakiye!');
+  me.cash -= amt; me.deposit += amt; playSound('money'); updateUI();
+}
+function withdrawMoney() {
+  let me = activeP(), amt = parseInt($('depositAmount').value) || 0;
+  if (amt <= 0 || me.deposit < amt) return alert('Yetersiz mevduat!');
+  me.deposit -= amt; me.cash += amt; playSound('money'); updateUI();
+}
+
+function sellPlot(remote = false) {
+  let p = plots.find(x => x.id === state.selectedPlotId), me = activeP();
+  let val = (p.basePrice + (p.biz ? bizCatalog[p.biz.type].cost * p.biz.lvl : 0)) * 0.7;
+  if (remote || confirm(`Bankaya ${fmt(val)} fiyata satılsın mı?`)) {
+    me.cash += val; p.owner = null; p.biz = null; p.mortgage = null;
+    playSound('money'); selectPlot(p.id); updateUI();
+  }
+}
+
+function takeLoan() {
+  let me = activeP();
+  if (me.debt > 0) return alert('Zaten kredi borcunuz var!');
+  let loan = loanCatalog[$('loanType').value];
+  me.cash += loan.amount; me.debt = loan.debt; me.monthlyDebt = loan.monthly; me.debtMonthsLeft = loan.months;
+  playSound('money'); addLog(`🏦 KREDİ: ${me.name} ${loan.name} çekti.`); updateUI();
+}
+
+function buildBusiness() {
+  let p = plots.find(x => x.id === state.selectedPlotId), bType = $('bizType').value, spec = bizCatalog[bType], me = activeP();
+  if (me.cash < spec.cost) return alert('Yetersiz bakiye!');
+  me.cash -= spec.cost;
+  p.biz = { type: bType, lvl: 1, sabotaged: false, inspected: false, insured: false, strikeMonths: 0, isBankrupt: false };
+  playSound('build'); addLog(`🏗️ ${me.name}, ${p.name} üzerine ${bType} inşa etti.`);
+  checkQuests(me); selectPlot(p.id); updateUI();
+}
+
+function startAuction() {
+  let p = plots.find(x => x.id === state.selectedPlotId);
+  state.auction = { active: true, plotId: p.id, bid: p.basePrice, leader: null };
+  $('auctionPlotName').textContent = `${p.name} (${p.district}) - Temel Değer: ${fmt(p.basePrice)}`;
+  $('currentBid').textContent = fmt(p.basePrice);$('auctionModal').style.display = 'flex';
+}
+
+function placeBid(pIdx) {
+  let bidder = state.players[pIdx], nextBid = state.auction.bid + 25000;
+  if (bidder.cash < nextBid) return alert('Yetersiz bakiye!');
+  playSound('money'); state.auction.bid = nextBid; state.auction.leader = pIdx;
+  $('currentBid').textContent = fmt(nextBid);$('bidLeader').textContent = `En Yüksek Teklif: ${bidder.name}`;
+}
+
+function closeAuction() {
+  if (state.auction.leader !== null) {
+    let winner = state.players[state.auction.leader], p = plots.find(x => x.id === state.auction.plotId);
+    winner.cash -= state.auction.bid; winner.boughtLandThisTurn = true; p.owner = winner.id;
+    playSound('build'); addLog(`🔨 İHALE: ${p.name} ${winner.name} tarafından ${fmt(state.auction.bid)} bedelle alındı.`);
+    checkQuests(winner);
+  }
+  $('auctionModal').style.display = 'none'; state.auction.active = false;
+  if (state.selectedPlotId) selectPlot(state.selectedPlotId); updateUI();
+}
+
+function triggerInspection() {
+  let me = activeP(), p = plots.find(x => x.id === state.selectedPlotId);
+  if (!p || p.owner === null || p.owner === me.id || !p.biz) return alert('Lütfen RAKİBİN MÜLKÜNÜ seçin!');
+  if (me.cash < 150000) return alert('Yetersiz bakiye!');
+  me.cash -= 150000;
+  if (p.biz.insured) return alert('🛡️ Sigortalı mülke zabıta işlem yapamadı!');
+  p.biz.inspected = true; playSound('sabotage');
+  addLog(`🚨 ZABITA: ${me.name}, rakip dükkanı mühürletti!`); selectPlot(p.id); updateUI();
+}
+
+function triggerSabotage() {
+  let me = activeP(), p = plots.find(x => x.id === state.selectedPlotId);
+  if (!p || p.owner === null || p.owner === me.id || !p.biz) return alert('Lütfen RAKİBİN MÜLKÜNÜ seçin!');
+  let cost = 200000 + ((p.biz.lvl - 1) * 50000);
+  if (me.cash < cost) return alert('Yetersiz bakiye!');
+  me.cash -= cost;
+  if (p.biz.insured) alert('🛡️ Sigorta sabotajı engelledi!');
+  else { p.biz.sabotaged = true; playSound('sabotage'); addLog(`💣 SABOTAJ: ${p.name} sabote edildi!`); }
+  selectPlot(p.id); updateUI();
+}
+
+function endTurn() {
+  activeP().done = true;
+  if (state.players[0].done && state.players[1].done) processMonth();
+  else { state.turn = state.turn === 0 ? 1 : 0; startTimer(); updateUI(); }
+}
+
+function handleForeclosures(list, mf, sc) {
+  let pt = list.shift(), formerOwner = state.players[pt.owner], rival = state.players[pt.owner === 0 ? 1 : 0];
+  let totalVal = pt.basePrice + (pt.biz ? bizCatalog[pt.biz.type].cost * pt.biz.lvl : 0);
+  let offerPrice = Math.round(totalVal * 0.6);
+  pendingForeclosurePlot = { plot: pt, rival, price: offerPrice, remainingList: list, mf, sc };
+  $('foreclosureText').innerHTML = `🏛️ <b>${formerOwner.name}</b>, ipotek borcunu ödeyemedi. Banka bu mülkü <b>${rival.name}</b> oyuncusuna teklif ediyor:`;
+  $('foreclosurePrice').textContent = fmt(offerPrice);$('foreclosureModal').style.display = 'flex';
+}
+
+function buyForeclosedPlot() {
+  let f = pendingForeclosurePlot;
+  if (f.rival.cash < f.price) return alert('Yetersiz bakiye!');
+  f.rival.cash -= f.price; f.plot.owner = f.rival.id; f.plot.mortgage = null;
+  playSound('money'); addLog(`🏛️ HACİZ SATIŞI: ${f.rival.name}, hacizli mülkü satın aldı.`);
+  $('foreclosureModal').style.display = 'none';
+  if (f.remainingList.length > 0) handleForeclosures(f.remainingList, f.mf, f.sc);
+  else finishMonthProcess(f.mf, f.sc);
+}
+
+function rejectForeclosedPlot() {
+  let f = pendingForeclosurePlot;
+  f.plot.owner = null; f.plot.biz = null; f.plot.mortgage = null;
+  addLog(`🏛️ HACİZ: Mülk sahipsiz olarak boşa çıktı.`);
+  $('foreclosureModal').style.display = 'none';
+  if (f.remainingList.length > 0) handleForeclosures(f.remainingList, f.mf, f.sc);
+  else finishMonthProcess(f.mf, f.sc);
+}
+
+function triggerBankruptcy(p) {
+  clearInterval(timerInterval);
+  let winner = state.players.find(x => x.id !== p.id);
+  $('winnerTitle').textContent = '💥 İFLAS GERÇEKLEŞTİ!';
+  $('winnerDetails').innerHTML = `<b style="color:#ef4444;">${p.name}</b> İFLAS ETTİ!<br><br>🏆 KAZANAN: <b style="color:#10b981;">${winner.name}</b>`;
+  $('gameOverModal').style.display = 'flex';
+}
+
+function finishGame() {
+  clearInterval(timerInterval);
+  let s1 = calculateNetWorth(state.players[0]), s2 = calculateNetWorth(state.players[1]);
+  $('winnerTitle').textContent = '🏆 24 AYLIK SEZON TAMAMLANDI!';
+  $('winnerDetails').innerHTML = `🔵 Oyuncu 1: ${fmt(s1)}<br>🔴 Oyuncu 2: ${fmt(s2)}<br><br>🎉 KAZANAN: <b>${s1 > s2 ? state.players[0].name : state.players[1].name}</b>`;
+  $('gameOverModal').style.display = 'flex';
+}
+
+function upgradeBusiness() {
+  let p = plots.find(x => x.id === state.selectedPlotId), cost = bizCatalog[p.biz.type].cost * 0.7, me = activeP();
+  if (me.cash < cost) return alert('Yetersiz bakiye!');
+  me.cash -= cost; p.biz.lvl++; playSound('build');
+  addLog(`⭐ ${me.name}, ${p.biz.type} seviyesini ${p.biz.lvl}'e çıkardı.`); selectPlot(p.id); updateUI();
+}
+
+function checkQuests(p) {
+  let myBiz = plots.filter(x => x.owner === p.id && x.biz).map(x => x.biz.type);
+  p.quests.forEach(q => {
+    if (!q.completed) {
+      if ((q.id === 1 && myBiz.includes('Otel')) || (q.id === 2 && myBiz.includes('Fabrika')) || (q.id === 3 && plots.filter(x => x.owner === p.id).length >= 3)) {
+        q.completed = true; p.cash += q.reward; playSound('money');
+        addLog(`🏆 GÖREV TAMAMLANDI: ${p.name}, ${fmt(q.reward)} kazandı!`);
+      }
+    }
+  });
+}
+
+function addLog(msg) { state.log.push(msg); }
+
+
+
+/* ================================================================
+   ONLINE PVP LAYER
+   The original game engine is kept intact. A host client becomes the
+   authoritative simulation peer and relays its state through the server.
+   This avoids rewriting the game's rules while keeping both screens in sync.
+   ================================================================ */
+const ONLINE = {
+  ws: null,
+  roomId: null,
+  playerId: null,
+  isHost: false,
+  initialized: false,
+  applyingRemote: false,
+  timerHandle: null,
+  lastSnapshot: null,
+  connected: false
+};
+
+function onlineJsonClone(x) {
+  return JSON.parse(JSON.stringify(x));
+}
+
+function onlineSetStatus(text, color='#f59e0b') {
+  const bar = $('onlineStatusBar');
+  if (!bar) return;
+  const dot = bar.querySelector('.dot');
+  $('onlineStatusText').textContent = text;
+  if (dot) dot.style.background = color;
+}
+
+function onlineSnapshot() {
+  const cleanState = onlineJsonClone(state);
+  // selectedPlotId is purely local UI state and must not overwrite the other client's selection.
+  cleanState.selectedPlotId = null;
+  return {
+    state: cleanState,
+    plots: onlineJsonClone(plots),
+    timer: timeLeft,
+    ui: {
+      election: $('electionModal')?.style.display || 'none',
+      auction: $('auctionModal')?.style.display || 'none',
+      report: $('reportModal')?.style.display || 'none',
+      foreclosure: $('foreclosureModal')?.style.display || 'none',
+      gameOver: $('gameOverModal')?.style.display || 'none',
+      auctionPlotName: $('auctionPlotName')?.textContent || '',
+      currentBid: $('currentBid')?.textContent || '',
+      bidLeader: $('bidLeader')?.textContent || '',
+      reportContent: $('reportContent')?.innerHTML || '',
+      foreclosureText: $('foreclosureText')?.innerHTML || '',
+      foreclosurePrice: $('foreclosurePrice')?.textContent || '',
+      winnerTitle: $('winnerTitle')?.textContent || '',
+      winnerDetails: $('winnerDetails')?.innerHTML || ''
+    }
+  };
+}
+
+function onlineBroadcastSnapshot() {
+  if (!ONLINE.isHost || !ONLINE.ws || ONLINE.ws.readyState !== WebSocket.OPEN) return;
+  const snap = onlineSnapshot();
+  ONLINE.lastSnapshot = snap;
+  ONLINE.ws.send(JSON.stringify({type:'host_snapshot', roomId:ONLINE.roomId, snapshot:snap}));
+}
+
+function onlineSendAction(actionType, payload={}) {
+  if (!ONLINE.ws || ONLINE.ws.readyState !== WebSocket.OPEN) return alert('Sunucu bağlantısı yok.');
+  ONLINE.ws.send(JSON.stringify({
+    type: 'action',
+    roomId: ONLINE.roomId,
+    action: actionType,
+    payload,
+    playerId: ONLINE.playerId
+  }));
+}
+
+function onlineSyncModals(ui) {
+  if (!ui) return;
+  if ($('auctionPlotName')) $('auctionPlotName').textContent = ui.auctionPlotName || '';
+  if ($('currentBid')) $('currentBid').textContent = ui.currentBid || '0 TL';
+  if ($('bidLeader')) $('bidLeader').textContent = ui.bidLeader || 'En Yüksek Teklif: Yok';
+  if ($('reportContent')) $('reportContent').innerHTML = ui.reportContent || '';
+  if ($('foreclosureText')) $('foreclosureText').innerHTML = ui.foreclosureText || '';
+  if ($('foreclosurePrice')) $('foreclosurePrice').textContent = ui.foreclosurePrice || '0 TL';
+  if ($('winnerTitle')) $('winnerTitle').textContent = ui.winnerTitle || '🏆 OYUN BİTTİ!';
+  if ($('winnerDetails')) $('winnerDetails').innerHTML = ui.winnerDetails || '';
+  ['election','auction','report','foreclosure','gameOver'].forEach(k => {
+    const id = k === 'gameOver' ? 'gameOverModal' : k + 'Modal';
+    if ($(id)) $(id).style.display = ui[k] || 'none';
+  });
+}
+
+function onlineApplySnapshot(snap) {
+  if (!snap) return;
+  const localSelected = state?.selectedPlotId ?? null;
+  state = onlineJsonClone(snap.state);
+  plots = onlineJsonClone(snap.plots);
+  state.selectedPlotId = localSelected;
+  timeLeft = typeof snap.timer === 'number' ? snap.timer : 60;
+  ONLINE.lastSnapshot = snap;
+  updateUI();
+  if (!ONLINE.isHost) onlineStartGuestTimer();
+  onlineSyncModals(snap.ui);
+  if (localSelected) {
+    try { selectPlot(localSelected); } catch(e) {}
+  }
+}
+
+function onlineStartGuestTimer() {
+  if (ONLINE.isHost) return;
+  clearInterval(ONLINE.timerHandle);
+  $('timer').textContent = Math.max(0, timeLeft);
+  ONLINE.timerHandle = setInterval(() => {
+    if (timeLeft > 0) timeLeft--;
+    $('timer').textContent = timeLeft;
+  }, 1000);
+}
+
+// Host timer is authoritative. Guests only display the timer.
+const __onlineOriginals = {
+  startTimer: window.startTimer,
+  init: window.init,
+  updateUI: window.updateUI,
+  contributeInfra: window.contributeInfra,
+  triggerStrike: window.triggerStrike,
+  runElection: window.runElection,
+  closeReport: window.closeReport,
+  mortgagePlot: window.mortgagePlot,
+  redeemMortgage: window.redeemMortgage,
+  executeTrade: window.executeTrade,
+  payFullDebt: window.payFullDebt,
+  insureBusiness: window.insureBusiness,
+  buyStock: window.buyStock,
+  sellStock: window.sellStock,
+  depositMoney: window.depositMoney,
+  withdrawMoney: window.withdrawMoney,
+  sellPlot: window.sellPlot,
+  takeLoan: window.takeLoan,
+  buildBusiness: window.buildBusiness,
+  startAuction: window.startAuction,
+  placeBid: window.placeBid,
+  closeAuction: window.closeAuction,
+  triggerInspection: window.triggerInspection,
+  triggerSabotage: window.triggerSabotage,
+  endTurn: window.endTurn,
+  buyForeclosedPlot: window.buyForeclosedPlot,
+  rejectForeclosedPlot: window.rejectForeclosedPlot,
+  upgradeBusiness: window.upgradeBusiness
+};
+
+window.startTimer = function() {
+  clearInterval(ONLINE.timerHandle);
+  if (!ONLINE.isHost) {
+    onlineStartGuestTimer();
+    return;
+  }
+  timeLeft = 60;
+  $('timer').textContent = timeLeft;
+  ONLINE.timerHandle = setInterval(() => {
+    timeLeft--;
+    $('timer').textContent = timeLeft;
+    onlineBroadcastSnapshot();
+    if (timeLeft <= 0) {
+      clearInterval(ONLINE.timerHandle);
+      const timedOutPlayer = activeP().name;
+      addLog(`⏰ SÜRE DOLDU: ${timedOutPlayer} hamle yapamadı!`);
+      __onlineOriginals.endTurn.call(window);
+      updateUI();
+      onlineBroadcastSnapshot();
+    }
+  }, 1000);
+};
+
+function onlineGuardTurn(actionName, actorId = ONLINE.playerId) {
+  if (actionName === 'placeBid' || actionName === 'runElection' || actionName === 'closeReport' || actionName === 'buyForeclosedPlot' || actionName === 'rejectForeclosedPlot') return true;
+  if (state.turn !== actorId) {
+    alert('Bu hamle şu anda senin sıran değil. İnsanların sıraya uyması ne kadar zor olmasın.');
+    return false;
+  }
+  return true;
+}
+
+function onlineRemoteWithSelected(plotId, fn) {
+  const old = state.selectedPlotId;
+  state.selectedPlotId = plotId ?? old;
+  try { fn(); } finally { state.selectedPlotId = old; }
+}
+
+function onlineApplyAction(msg) {
+  if (!ONLINE.isHost || !msg) return;
+  const actor = msg.playerId;
+  const action = msg.action;
+  const p = msg.payload || {};
+
+  // Basic anti-cheat validation at the host boundary.
+  if (actor !== ONLINE.playerId) {
+    // The host is player 0 in this implementation; guest actions are checked below.
+  }
+  if (!onlineGuardTurn(action, actor)) return;
+
+  ONLINE.applyingRemote = true;
+  try {
+    switch(action) {
+      case 'contributeInfra': __onlineOriginals.contributeInfra.call(window, p.type); break;
+      case 'triggerStrike': onlineRemoteWithSelected(p.plotId, () => __onlineOriginals.triggerStrike.call(window)); break;
+      case 'runElection':
+        $('p1Bribe').value = p.p1Bribe;
+        $('p2Bribe').value = p.p2Bribe;
+        __onlineOriginals.runElection.call(window);
+        break;
+      case 'closeReport': __onlineOriginals.closeReport.call(window); break;
+      case 'mortgagePlot': onlineRemoteWithSelected(p.plotId, () => __onlineOriginals.mortgagePlot.call(window, true)); break;
+      case 'redeemMortgage': onlineRemoteWithSelected(p.plotId, () => __onlineOriginals.redeemMortgage.call(window)); break;
+      case 'executeTrade': {
+        const myP = plots.find(x => x.id === p.myPlotId);
+        const targetP = plots.find(x => x.id === p.targetPlotId);
+        const me = state.players[state.turn];
+        const opponent = state.players[state.turn === 0 ? 1 : 0];
+        const cashDiff = Number(p.cashDiff) || 0;
+        if (!myP || !targetP || myP.owner !== me.id || targetP.owner !== opponent.id) break;
+        if (cashDiff > 0 && me.cash < cashDiff) break;
+        if (cashDiff < 0 && opponent.cash < -cashDiff) break;
+        me.cash -= cashDiff;
+        opponent.cash += cashDiff;
+        myP.owner = opponent.id;
+        targetP.owner = me.id;
+        playSound('money');
+        addLog(`🤝 TAKAS: ${me.name} ve ${opponent.name} mülk takası yaptı!`);
+        selectPlot(targetP.id); updateUI();
+        break;
+      }
+      case 'payFullDebt': __onlineOriginals.payFullDebt.call(window); break;
+      case 'insureBusiness': onlineRemoteWithSelected(p.plotId, () => __onlineOriginals.insureBusiness.call(window)); break;
+      case 'buyStock': $('depositAmount').value = p.amount; __onlineOriginals.buyStock.call(window); break;
+      case 'sellStock': $('depositAmount').value = p.amount; __onlineOriginals.sellStock.call(window); break;
+      case 'depositMoney': $('depositAmount').value = p.amount; __onlineOriginals.depositMoney.call(window); break;
+      case 'withdrawMoney': $('depositAmount').value = p.amount; __onlineOriginals.withdrawMoney.call(window); break;
+      case 'sellPlot': onlineRemoteWithSelected(p.plotId, () => __onlineOriginals.sellPlot.call(window, true)); break;
+      case 'takeLoan': $('loanType').value = p.loanType; __onlineOriginals.takeLoan.call(window); break;
+      case 'buildBusiness': onlineRemoteWithSelected(p.plotId, () => { $('bizType').value = p.bizType; __onlineOriginals.buildBusiness.call(window); }); break;
+      case 'startAuction': onlineRemoteWithSelected(p.plotId, () => __onlineOriginals.startAuction.call(window)); break;
+      case 'placeBid':
+        if (Number(p.pIdx) !== Number(actor)) break;
+        __onlineOriginals.placeBid.call(window, p.pIdx);
+        break;
+      case 'closeAuction': __onlineOriginals.closeAuction.call(window); break;
+      case 'triggerInspection': onlineRemoteWithSelected(p.plotId, () => __onlineOriginals.triggerInspection.call(window)); break;
+      case 'triggerSabotage': onlineRemoteWithSelected(p.plotId, () => __onlineOriginals.triggerSabotage.call(window)); break;
+      case 'endTurn': __onlineOriginals.endTurn.call(window); break;
+      case 'buyForeclosedPlot':
+        if (window.pendingForeclosurePlot && window.pendingForeclosurePlot.rival?.id === actor) __onlineOriginals.buyForeclosedPlot.call(window);
+        break;
+      case 'rejectForeclosedPlot':
+        if (window.pendingForeclosurePlot && window.pendingForeclosurePlot.rival?.id === actor) __onlineOriginals.rejectForeclosedPlot.call(window);
+        break;
+      case 'upgradeBusiness': onlineRemoteWithSelected(p.plotId, () => __onlineOriginals.upgradeBusiness.call(window)); break;
+    }
+  } catch (e) {
+    console.error('Online action error', action, e);
+  } finally {
+    ONLINE.applyingRemote = false;
+  }
+  updateUI();
+  onlineBroadcastSnapshot();
+}
+
+// Local button actions become network actions. Remote host execution is handled above.
+function netWrap(name, action, payloadBuilder) {
+  const original = __onlineOriginals[name];
+  window[name] = function(...args) {
+    if (ONLINE.applyingRemote || !ONLINE.connected) return original.apply(window, args);
+    const payload = payloadBuilder ? payloadBuilder(...args) : {};
+    if (!onlineGuardTurn(action)) return;
+    onlineSendAction(action, payload);
+  };
+}
+
+netWrap('contributeInfra', 'contributeInfra', type => ({type}));
+netWrap('triggerStrike', 'triggerStrike', () => ({plotId: state.selectedPlotId}));
+netWrap('runElection', 'runElection', () => ({p1Bribe: Number($('p1Bribe').value)||0, p2Bribe: Number($('p2Bribe').value)||0}));
+netWrap('closeReport', 'closeReport');
+netWrap('mortgagePlot', 'mortgagePlot', () => ({plotId: state.selectedPlotId}));
+netWrap('redeemMortgage', 'redeemMortgage', () => ({plotId: state.selectedPlotId}));
+netWrap('executeTrade', 'executeTrade', () => ({myPlotId: $('tradeMyPlotSelect').value, targetPlotId: $('tradeTargetPlotSelect').value, cashDiff: Number($('tradeCashDiff').value)||0}));
+netWrap('payFullDebt', 'payFullDebt');
+netWrap('insureBusiness', 'insureBusiness', () => ({plotId: state.selectedPlotId}));
+netWrap('buyStock', 'buyStock', () => ({amount: Number($('depositAmount').value)||0}));
+netWrap('sellStock', 'sellStock', () => ({amount: Number($('depositAmount').value)||0}));
+netWrap('depositMoney', 'depositMoney', () => ({amount: Number($('depositAmount').value)||0}));
+netWrap('withdrawMoney', 'withdrawMoney', () => ({amount: Number($('depositAmount').value)||0}));
+netWrap('sellPlot', 'sellPlot', () => ({plotId: state.selectedPlotId}));
+netWrap('takeLoan', 'takeLoan', () => ({loanType: $('loanType').value}));
+netWrap('buildBusiness', 'buildBusiness', () => ({plotId: state.selectedPlotId, bizType: $('bizType').value}));
+netWrap('startAuction', 'startAuction', () => ({plotId: state.selectedPlotId}));
+netWrap('placeBid', 'placeBid', pIdx => ({pIdx}));
+netWrap('closeAuction', 'closeAuction');
+netWrap('triggerInspection', 'triggerInspection', () => ({plotId: state.selectedPlotId}));
+netWrap('triggerSabotage', 'triggerSabotage', () => ({plotId: state.selectedPlotId}));
+netWrap('endTurn', 'endTurn');
+netWrap('buyForeclosedPlot', 'buyForeclosedPlot');
+netWrap('rejectForeclosedPlot', 'rejectForeclosedPlot');
+netWrap('upgradeBusiness', 'upgradeBusiness', () => ({plotId: state.selectedPlotId}));
+
+function onlineShowLobby() {
+  document.body.classList.add('online-loading');
+  const wrap = document.createElement('div');
+  wrap.id = 'onlineLobby';
+  wrap.innerHTML = `
+    <div class="online-box">
+      <h2>🌐 Şehir Savaşları Online PvP</h2>
+      <p>İki bilgisayardan aynı odaya gir. İlk giren Oyuncu 1, ikinci giren Oyuncu 2 olur. Oyun state'i sunucudaki bağlantı üzerinden eşitlenir.</p>
+      <button id="createRoomBtn" style="width:100%;padding:10px;background:#10b981;margin-bottom:8px;">🎮 Yeni Oda Oluştur</button>
+      <div style="font-size:10px;color:#94a3b8;text-align:center;margin:6px 0;">veya mevcut odaya katıl</div>
+      <div class="online-row">
+        <input id="joinRoomInput" maxlength="6" placeholder="ODA KODU" autocomplete="off" />
+        <button id="joinRoomBtn" style="background:#2563eb;min-width:110px;">🔗 Katıl</button>
+      </div>
+      <div id="lobbyMessage" style="margin-top:10px;font-size:11px;color:#fbbf24;text-align:center;"></div>
+      <div class="mini-note">Not: İnternetten oynatmak için bu projeyi bir Node.js sunucusunda çalıştırman gerekir. Aynı Wi‑Fi için sunucunun yerel IP adresi yeterlidir.</div>
+    </div>`;
+  document.body.appendChild(wrap);
+
+  const preset = new URLSearchParams(location.search).get('room');
+  if (preset) $('joinRoomInput').value = preset.toUpperCase().slice(0,6);
+
+  $('createRoomBtn').onclick = () => {
+    if (!ONLINE.ws || ONLINE.ws.readyState !== WebSocket.OPEN) {
+      $('lobbyMessage').textContent = 'Sunucu bağlantısı henüz hazır değil. Birkaç saniye bekleyip tekrar dene.';
+      return;
+    }
+    $('lobbyMessage').textContent = 'Oda oluşturuluyor...';
+    ONLINE.ws.send(JSON.stringify({type:'create_room'}));
+  };
+  $('joinRoomBtn').onclick = () => {
+    const roomId = $('joinRoomInput').value.trim().toUpperCase();
+    if (!roomId) return;
+    if (!ONLINE.ws || ONLINE.ws.readyState !== WebSocket.OPEN) {
+      $('lobbyMessage').textContent = 'Sunucu bağlantısı henüz hazır değil. Birkaç saniye bekleyip tekrar dene.';
+      return;
+    }
+    $('lobbyMessage').textContent = 'Odaya bağlanılıyor...';
+    ONLINE.ws.send(JSON.stringify({type:'join_room', roomId}));
+  };
+}
+
+function onlineHideLobby(roomId) {
+  const lobby = $('onlineLobby');
+  if (!lobby) return;
+  document.body.classList.remove('online-loading');
+  lobby.innerHTML = `
+    <div class="online-box" style="text-align:center">
+      <h2>✅ Oda hazır</h2>
+      <p>Rakibin de bu kodu kullanarak katılabilir.</p>
+      <div class="online-code">${roomId}</div>
+      <button id="startGameAfterRoom" style="width:100%;padding:10px;background:#10b981">🚀 Oyunu Aç</button>
+      <div id="lobbyWaitText" style="margin-top:10px;font-size:11px;color:#94a3b8"></div>
+    </div>`;
+  if (ONLINE.isHost) {
+    $('startGameAfterRoom').onclick = () => {
+      $('onlineLobby').style.display = 'none';
+      if (!ONLINE.initialized) { __onlineOriginals.init.call(window); ONLINE.initialized = true; }
+      onlineBroadcastSnapshot();
+      onlineSetStatus(`Oda ${roomId} • Oyuncu 1 • Rakip bekleniyor`, '#10b981');
+    };
+  } else {
+    $('startGameAfterRoom').style.display = 'none';
+    $('lobbyWaitText').textContent = 'Host oyunu başlattığında ekran senkronize olacak...';
+    $('onlineLobby').style.display = 'none';
+    if (!ONLINE.initialized) { __onlineOriginals.init.call(window); ONLINE.initialized = true; }
+    onlineSetStatus(`Oda ${roomId} • Oyuncu 2`, '#10b981');
+  }
+}
+
+function onlineBoot() {
+  const status = document.createElement('div');
+  status.id = 'onlineStatusBar';
+  status.innerHTML = `<span class="dot"></span><span id="onlineStatusText">Sunucuya bağlanılıyor...</span>`;
+  document.body.appendChild(status);
+  onlineShowLobby();
+
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${proto}//${location.host}`;
+  ONLINE.ws = new WebSocket(wsUrl);
+
+  ONLINE.ws.onopen = () => {
+    ONLINE.connected = true;
+    onlineSetStatus('Sunucu bağlı • Oda oluştur veya katıl', '#10b981');
+    const m = $('lobbyMessage');
+    if (m) m.textContent = 'Sunucu hazır. Oda oluşturabilir veya kodla katılabilirsin.';
+  };
+  ONLINE.ws.onerror = () => {
+    ONLINE.connected = false;
+    onlineSetStatus('Sunucu bağlantı hatası', '#ef4444');
+    const m = $('lobbyMessage');
+    if (m) m.textContent = 'Sunucuya bağlanılamadı. Sayfayı yenileyip tekrar dene.';
+  };
+  ONLINE.ws.onclose = () => {
+    ONLINE.connected = false;
+    onlineSetStatus('Sunucu bağlantısı kesildi', '#ef4444');
+  };
+  ONLINE.ws.onmessage = event => {
+    let msg;
+    try { msg = JSON.parse(event.data); } catch(e) { return; }
+    if (msg.type === 'room_created' || msg.type === 'room_joined') {
+      ONLINE.connected = true;
+      ONLINE.roomId = msg.roomId;
+      ONLINE.playerId = msg.playerId;
+      ONLINE.isHost = !!msg.isHost;
+      onlineHideLobby(msg.roomId);
+      onlineSetStatus(`Oda ${msg.roomId} • Oyuncu ${ONLINE.playerId+1}`, '#10b981');
+      if (msg.snapshot) onlineApplySnapshot(msg.snapshot);
+      else if (ONLINE.isHost && ONLINE.initialized) onlineBroadcastSnapshot();
+    } else if (msg.type === 'peer_joined') {
+      onlineSetStatus(`Oda ${ONLINE.roomId} • Rakip bağlandı`, '#10b981');
+      if (ONLINE.isHost) onlineBroadcastSnapshot();
+    } else if (msg.type === 'action') {
+      onlineApplyAction(msg);
+    } else if (msg.type === 'snapshot') {
+      onlineApplySnapshot(msg.snapshot);
+    } else if (msg.type === 'room_error') {
+      const m = $('lobbyMessage');
+      if (m) m.textContent = msg.message || 'Odaya bağlanılamadı.';
+    } else if (msg.type === 'peer_left') {
+      onlineSetStatus('Rakip ayrıldı • oda açık bekliyor', '#f59e0b');
+    } else if (msg.type === 'server_error') {
+      onlineSetStatus(msg.message || 'Sunucu hatası', '#ef4444');
+    }
+  };
+}
+
+// Start the online layer only after ONLINE and all online functions exist.
+onlineBoot();
+
+</script>
+</body>
+</html>

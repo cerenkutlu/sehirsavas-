@@ -1,0 +1,14 @@
+{
+  "name": "sehir-savaslari-online-pvp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Şehir Savaşları 2 kişilik online PvP sürümü",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18"
+  }
+}
